@@ -1,0 +1,163 @@
+/* Import a nice font similar to the image */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap');
+
+:root {
+    /* Color Palette based on the purple design */
+    --bg-gradient: linear-gradient(135deg, #2c003e, #4b006e);
+    --calc-top-bg: #f8b9f3;
+    --calc-bottom-bg: #ffffff;
+    --text-primary: #1a1a1a;
+    --text-secondary: #5a5a5a;
+    --text-purple-accent: #7a008f;
+    --accent-fill: #7a008f;
+    --shadow-color: rgba(0, 0, 0, 0.25);
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: 'Poppins', sans-serif;
+}
+
+body {
+    min-height: 100vh;
+    background: var(--bg-gradient);
+    /* Add texture effect overlay if desired */
+    background-image: var(--bg-gradient), url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0IiBoZWlnaHQ9IjQiPgo8cmVjdCB3aWR0aD0iNCIgaGVpZ2h0PSI0IiBmaWxsPSIjZmZmIiBmaWxsLW9wYWNpdHk9IjAuMDUiLz4KPC9zdmc+');
+}
+
+/* Centering Wrapper */
+.center-wrapper {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 20px;
+}
+
+/* Calculator Main Container */
+.calculator {
+    width: 100%;
+    max-width: 340px;
+    background: transparent;
+    border-radius: 35px;
+    /* Deep shadow for floating effect */
+    box-shadow: 0px 20px 50px -10px var(--shadow-color);
+    overflow: visible;
+    position: relative;
+}
+
+/* Top Display Section */
+.display-container {
+    background-color: var(--calc-top-bg);
+    color: var(--text-primary);
+    padding: 40px 30px 60px 30px; /* Extra bottom padding for overlap */
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    justify-content: flex-end;
+    text-align: right;
+    border-top-left-radius: 35px;
+    border-top-right-radius: 35px;
+    min-height: 180px; /* Maintains initial size but allows growth */
+    height: auto;
+}
+
+.previous-operand {
+    color: var(--text-secondary);
+    font-size: 1.1rem;
+    min-height: 1.5rem;
+    margin-bottom: 5px;
+    width: 100%;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.current-operand {
+    font-size: 3rem;
+    font-weight: 500;
+    line-height: 1.2;
+    white-space: nowrap; /* Default state, JS will toggle this */
+    padding: 0 5px;
+    width: 100%;
+    min-height: 4rem; /* Maintains initial size but allows growth */
+    height: auto;
+    transition: font-size 0.2s ease; /* Nice animation for resizing */
+    word-break: break-all; /* Ensures numbers break if wrapping is enabled */
+    overflow: visible;
+}
+
+/* Hide scrollbar for a cleaner look while still allowing scrolling */
+.current-operand::-webkit-scrollbar {
+    display: none;
+}
+.current-operand {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+}
+
+/* Bottom Keypad Section */
+.keypad-container {
+    background-color: var(--calc-bottom-bg);
+    padding: 30px 25px;
+    /* The negative margin pulls this section up over the display area */
+    margin-top: -35px;
+    border-radius: 35px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    grid-template-rows: repeat(6, 1fr);
+    gap: 15px;
+    position: relative; /* Ensures it sits on top of display container */
+}
+
+/* General Button Styling */
+.btn {
+    border: none;
+    background: none;
+    font-size: 1.5rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    cursor: pointer;
+    aspect-ratio: 1 / 1; /* Ensures buttons are square */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-radius: 50%;
+    transition: background-color 0.2s;
+}
+
+.btn:hover {
+    background-color: #f0f0f0;
+}
+
+/* Specific Button Styles */
+.btn-top {
+    color: var(--text-purple-accent);
+    font-weight: 600;
+    font-size: 1.2rem;
+}
+
+.btn-operator {
+    color: var(--text-purple-accent);
+    font-size: 1.8rem;
+    font-weight: 400;
+}
+
+/* The Equals Button */
+.btn-equals {
+    background-color: var(--accent-fill);
+    color: white;
+    font-size: 1.8rem;
+    border-radius: 25px; /* Softer corners than a circle */
+    aspect-ratio: auto; /* override default aspect ratio */
+}
+
+.btn-equals:hover {
+    background-color: #5e0070;
+}
+
+/* Utility class for spanning columns */
+.span-four-columns {
+    grid-column: span 4;
+}
