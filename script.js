@@ -1,265 +1,311 @@
+/**
+ * Calculator Configuration & Constants
+ */
+const CONFIG = {
+    DISPLAY: {
+        DEFAULT_FONT_SIZE_PX: 48,
+        MIN_FONT_SIZE_PX: 14,
+        PADDING_BUFFER_PX: 10,
+        RESULT_PRECISION: 10,
+    },
+    OPERATORS: ['+', '-', '×', '÷'],
+    OPERATOR_MAP: { '×': '*', '÷': '/' },
+    VALID_CHARS: /^[0-9.+\-*/%() ]+$/,
+}
+
 class Calculator {
-    constructor(previousOperandTextElement, currentOperandTextElement) {
-        this.previousOperandTextElement = previousOperandTextElement
-        this.currentOperandTextElement = currentOperandTextElement
+    constructor(previousOperandElement, currentOperandElement) {
+        this.previousOperandElement = previousOperandElement
+        this.currentOperandElement = currentOperandElement
+        this.ghostElement = null
         this.clear()
     }
 
+    /**
+     * Reset calculator state
+     */
     clear() {
-        this.displayValue = '0'
-        this.expression = ''
+        this.currentValue = '0'
+        this.previousExpression = ''
         this.shouldResetScreen = false
-        if (this.currentOperandTextElement) {
-            this.currentOperandTextElement.style.fontSize = '3rem' // Reset to default CSS value
-            this.currentOperandTextElement.style.whiteSpace = 'nowrap'
+        this._lastMeasuredText = null
+        
+        if (this.currentOperandElement) {
+            this.currentOperandElement.style.fontSize = `${CONFIG.DISPLAY.DEFAULT_FONT_SIZE_PX}px`
+            this.currentOperandElement.style.whiteSpace = 'nowrap'
         }
     }
 
+    /**
+     * Remove the last character from current value
+     */
     delete() {
         if (this.shouldResetScreen) {
             this.clear()
             return
         }
-        if (this.displayValue === '0') return
+        if (this.currentValue === '0') return
         
-        this.displayValue = this.displayValue.toString().slice(0, -1)
-        if (this.displayValue === '' || this.displayValue === ' ') {
-            this.displayValue = '0'
+        this.currentValue = String(this.currentValue).slice(0, -1)
+        if (!this.currentValue.trim()) {
+            this.currentValue = '0'
         }
     }
 
+    /**
+     * Append a number or decimal point
+     */
     appendNumber(number) {
         if (this.shouldResetScreen) {
-            this.displayValue = ''
+            this.currentValue = ''
             this.shouldResetScreen = false
         }
         
         if (number === '.') {
-            const parts = this.displayValue.split(/[\s×÷+-]/)
+            const parts = this.currentValue.split(/[\s×÷+-]/)
             const lastPart = parts[parts.length - 1]
             if (lastPart.includes('.')) return
         }
         
         if (number === '%') {
-            if (this.displayValue === '0' || this.displayValue.endsWith('%')) return
-            this.displayValue = this.displayValue.toString() + '%'
+            if (this.currentValue === '0' || this.currentValue.endsWith('%')) return
+            this.currentValue += '%'
             return
         }
 
-        if (this.displayValue === '0' && number !== '.') {
-            this.displayValue = number.toString()
-            return
+        if (this.currentValue === '0' && number !== '.') {
+            this.currentValue = number.toString()
+        } else {
+            this.currentValue += number.toString()
         }
-        this.displayValue = this.displayValue.toString() + number.toString()
     }
 
-    appendParenthesis(parenthesis) {
+    /**
+     * Append a parenthesis with smart spacing
+     */
+    appendParenthesis(paren) {
         if (this.shouldResetScreen) {
-            this.displayValue = ''
+            this.currentValue = ''
             this.shouldResetScreen = false
         }
 
-        if (this.displayValue === '0') {
-            this.displayValue = parenthesis
+        if (this.currentValue === '0') {
+            this.currentValue = paren
+            return
+        }
+
+        const lastChar = this.currentValue.slice(-1)
+        const isOperatorOrParen = [...CONFIG.OPERATORS, '(', ' '].includes(lastChar)
+        
+        // Add space before opening parenthesis if it follows a number or %
+        if (paren === '(' && !isOperatorOrParen) {
+            this.currentValue += ' ' + paren
         } else {
-            const lastChar = this.displayValue.slice(-1)
-            if (parenthesis === '(' && !['+', '-', '×', '÷', '(', ' '].includes(lastChar)) {
-                this.displayValue += ' ' + parenthesis
-            } else {
-                this.displayValue += parenthesis
-            }
+            this.currentValue += paren
         }
     }
 
+    /**
+     * Handle operator selection and replacement
+     */
     chooseOperation(operation) {
-        if (this.shouldResetScreen) {
-            this.shouldResetScreen = false
-        }
+        if (this.shouldResetScreen) this.shouldResetScreen = false
+        
+        const trimmed = this.currentValue.trim()
+        const lastChar = trimmed.slice(-1)
 
-        const trimmedDisplay = this.displayValue.trim()
-        const lastChar = trimmedDisplay[trimmedDisplay.length - 1]
-
-        if (['+', '-', '×', '÷'].includes(lastChar)) {
-            this.displayValue = trimmedDisplay.slice(0, -1) + operation
+        if (CONFIG.OPERATORS.includes(lastChar)) {
+            this.currentValue = trimmed.slice(0, -1) + operation + ' '
         } else {
-            this.displayValue = this.displayValue + ' ' + operation + ' '
+            this.currentValue = trimmed + ' ' + operation + ' '
         }
     }
 
+    /**
+     * Evaluate the current expression
+     */
     compute() {
-        let finalExpression = this.displayValue
-
-        if (finalExpression === '' || finalExpression === '0') return
-
-        let sanitized = finalExpression
-            .replace(/([0-9.%])\s*\(/g, '$1 * (')
-            .replace(/\)\s*([0-9.])/g, ') * $1')
-            .replace(/\)\s*\(/g, ') * (')
-            .replace(/×/g, '*')
-            .replace(/÷/g, '/')
-            .replace(/(\d+(?:\.\d+)?)%/g, '($1/100)')
+        if (this.currentValue === '' || this.currentValue === '0') return
 
         try {
-            let openCount = (sanitized.match(/\(/g) || []).length;
-            let closeCount = (sanitized.match(/\)/g) || []).length;
+            const expression = this.currentValue
+            let sanitized = Calculator.sanitize(expression)
+            sanitized = Calculator.balance(sanitized)
 
-            if (openCount > closeCount) {
-                const trimmed = sanitized.trim();
-                if (trimmed.startsWith('(') && closeCount === 0) {
-                    sanitized = sanitized.replace(/^\s*\(/, '');
-                } else {
-                    while (openCount > closeCount) {
-                        sanitized += ')';
-                        closeCount++;
-                    }
-                }
+            // Safety check
+            if (!CONFIG.VALID_CHARS.test(sanitized)) {
+                throw new Error('Invalid characters')
             }
 
-            if (/[^-+*/().0-9\s]/.test(sanitized)) {
-                throw new Error("Invalid expression")
-            }
-            
+            // Using Function constructor as a safer alternative to eval
             const result = new Function(`return ${sanitized}`)()
-            
-            if (result === Infinity || isNaN(result)) {
-                this.displayValue = "Error"
+
+            if (!isFinite(result) || isNaN(result)) {
+                this.currentValue = 'Error'
             } else {
-                this.displayValue = parseFloat(result.toFixed(10)).toString()
+                // Limit precision and convert back to string
+                this.currentValue = String(Number(result.toFixed(CONFIG.DISPLAY.RESULT_PRECISION)))
             }
-            this.expression = finalExpression
+            
+            this.previousExpression = expression
             this.shouldResetScreen = true
         } catch (e) {
-            this.displayValue = "Error"
-            this.expression = ''
+            this.currentValue = 'Error'
+            this.previousExpression = ''
             this.shouldResetScreen = true
         }
     }
 
-    getFormattedDisplay(value) {
+    /**
+     * Static helper to sanitize expression for JS evaluation
+     */
+    static sanitize(value) {
+        return value
+            .replace(/([0-9.%])\s*\(/g, '$1 * (') // Implicit multiplication: 5( -> 5*(
+            .replace(/\)\s*([0-9.])/g, ') * $1') // Implicit multiplication: )5 -> )*5
+            .replace(/\)\s*\(/g, ') * (')       // Implicit multiplication: )( -> )*(
+            .replace(/×/g, CONFIG.OPERATOR_MAP['×'])
+            .replace(/÷/g, CONFIG.OPERATOR_MAP['÷'])
+            .replace(/(\d+(?:\.\d+)?)%/g, '($1/100)')
+    }
+
+    /**
+     * Static helper to auto-close unmatched parentheses
+     */
+    static balance(value) {
+        const openCount = (value.match(/\(/g) || []).length
+        const closeCount = (value.match(/\)/g) || []).length
+        
+        if (openCount <= closeCount) {
+            // If it starts with an unmatched open, and has no closes, just strip it
+            if (value.trim().startsWith('(') && closeCount === 0) {
+                return value.replace(/^\s*\(/, '')
+            }
+            return value
+        }
+        
+        return value + ')'.repeat(openCount - closeCount)
+    }
+
+    /**
+     * Format numbers for display (adding commas)
+     */
+    getFormattedValue(value) {
         if (value === 'Error') return 'Error'
+        
         const parts = value.split(/([\s×÷+\-()])/g)
         return parts.map(part => {
             if (/[\s×÷+\-()]/.test(part) || part === '') return part
+            
             const isPercent = part.endsWith('%')
-            const numberPart = isPercent ? part.slice(0, -1) : part
-            const [integer, decimal] = numberPart.split('.')
-            const formattedInteger = parseFloat(integer).toLocaleString('en', {
-                maximumFractionDigits: 0
+            const numberStr = isPercent ? part.slice(0, -1) : part
+            const [integer, decimal] = numberStr.split('.')
+            
+            if (isNaN(parseFloat(integer))) return part
+            
+            const formattedInt = parseFloat(integer).toLocaleString('en-US', { 
+                maximumFractionDigits: 0 
             })
-            if (formattedInteger === 'NaN') return part
-            let result = decimal !== undefined ? `${formattedInteger}.${decimal}` : formattedInteger
+            
+            const result = decimal !== undefined ? `${formattedInt}.${decimal}` : formattedInt
             return isPercent ? result + '%' : result
         }).join('')
     }
 
+    /**
+     * Update UI elements
+     */
     updateDisplay() {
-        this.currentOperandTextElement.innerText = this.getFormattedDisplay(this.displayValue)
-        this.previousOperandTextElement.innerText = this.getFormattedDisplay(this.expression)
-        this.adjustDisplayLayout()
+        this.currentOperandElement.innerText = this.getFormattedValue(this.currentValue)
+        this.previousOperandElement.innerText = this.getFormattedValue(this.previousExpression)
+        this.adjustLayout()
     }
 
-    adjustDisplayLayout() {
-        const el = this.currentOperandTextElement
-        const container = el.parentElement
-        const maxFontSize = 3 * 16 // 48px
-        const minFontSize = 14 // Readable min size before wrapping
+    /**
+     * Dynamically adjust font size to fit container
+     */
+    adjustLayout() {
+        const el = this.currentOperandElement
+        const text = el.innerText
+        if (this._lastMeasuredText === text) return
+        this._lastMeasuredText = text
 
-        // Initialize ghost element for measurement if it doesn't exist
-        if (!this.ghost) {
-            this.ghost = document.createElement('div')
-            this.ghost.style.position = 'absolute'
-            this.ghost.style.top = '-9999px'
-            this.ghost.style.visibility = 'hidden'
-            this.ghost.style.fontWeight = '500'
-            this.ghost.style.fontFamily = "'Poppins', sans-serif"
-            this.ghost.style.padding = '0 5px'
-            document.body.appendChild(this.ghost)
+        if (!this.ghostElement) {
+            this.ghostElement = document.createElement('div')
+            Object.assign(this.ghostElement.style, {
+                position: 'absolute',
+                top: '-9999px',
+                visibility: 'hidden',
+                whiteSpace: 'nowrap',
+                fontWeight: '500',
+                fontFamily: "'Poppins', sans-serif",
+            })
+            document.body.appendChild(this.ghostElement)
         }
 
-        // Configure ghost to measure ideal width at max font size
-        this.ghost.style.fontSize = maxFontSize + 'px'
-        this.ghost.style.whiteSpace = 'nowrap'
-        this.ghost.innerText = el.innerText
+        this.ghostElement.innerText = text
+        this.ghostElement.style.fontSize = `${CONFIG.DISPLAY.DEFAULT_FONT_SIZE_PX}px`
 
-        // Calculate available width inside the text element
-        // Use clientWidth to account for padding, minus a small safety buffer
-        const availableWidth = el.clientWidth - 10 
-        const contentWidth = this.ghost.scrollWidth
-
-        let newSize = maxFontSize
-        let shouldWrap = false
+        const availableWidth = el.clientWidth - CONFIG.DISPLAY.PADDING_BUFFER_PX
+        const contentWidth = this.ghostElement.scrollWidth
+        
+        let fontSize = CONFIG.DISPLAY.DEFAULT_FONT_SIZE_PX
+        let isWrapping = false
 
         if (contentWidth > availableWidth) {
-            // Calculate ratio to fit content within available width
             const ratio = availableWidth / contentWidth
-            newSize = Math.floor(maxFontSize * ratio)
-
-            if (newSize < minFontSize) {
-                newSize = minFontSize
-                shouldWrap = true
+            fontSize = Math.floor(CONFIG.DISPLAY.DEFAULT_FONT_SIZE_PX * ratio)
+            
+            if (fontSize < CONFIG.DISPLAY.MIN_FONT_SIZE_PX) {
+                fontSize = CONFIG.DISPLAY.MIN_FONT_SIZE_PX
+                isWrapping = true
             }
         }
 
-        // Apply calculated styles
-        el.style.fontSize = newSize + 'px'
-        
-        if (shouldWrap) {
-            el.style.whiteSpace = 'pre-wrap' // Allows wrapping
-            el.style.wordBreak = 'break-all'
-        } else {
-            el.style.whiteSpace = 'nowrap'
-            el.style.wordBreak = 'normal'
-        }
+        el.style.fontSize = `${fontSize}px`
+        el.style.whiteSpace = isWrapping ? 'pre-wrap' : 'nowrap'
+        el.style.wordBreak = isWrapping ? 'break-all' : 'normal'
     }
 }
 
+// --- Initialization ---
 
-// DOM Elements
-const numberButtons = document.querySelectorAll('[data-number]')
-const operationButtons = document.querySelectorAll('[data-operation]')
-const parenthesisButtons = document.querySelectorAll('[data-parenthesis]')
-const equalsButton = document.querySelector('[data-action="equals"]')
-const deleteButton = document.querySelector('[data-action="delete"]')
-const clearButton = document.querySelector('[data-action="clear"]')
-const previousOperandTextElement = document.querySelector('[data-previous-operand]')
-const currentOperandTextElement = document.querySelector('[data-current-operand]')
+const previousOperandElement = document.querySelector('[data-previous-operand]')
+const currentOperandElement = document.querySelector('[data-current-operand]')
+const keypad = document.querySelector('.keypad-container')
 
-// Initialize Calculator
-const calculator = new Calculator(previousOperandTextElement, currentOperandTextElement)
+const calculator = new Calculator(previousOperandElement, currentOperandElement)
 
-// Event Listeners
-numberButtons.forEach(button => {
-    button.addEventListener('click', () => {
-        calculator.appendNumber(button.innerText)
-        calculator.updateDisplay()
-    })
-})
+/**
+ * Event Delegation for keypad clicks
+ */
+keypad.addEventListener('click', (e) => {
+    const btn = e.target.closest('button')
+    if (!btn) return
 
-operationButtons.forEach(button => {
-    button.addEventListener('click', () => {
-        calculator.chooseOperation(button.innerText)
-        calculator.updateDisplay()
-    })
-})
+    const { action, number, operation, parenthesis } = btn.dataset
+    const text = btn.innerText
 
-parenthesisButtons.forEach(button => {
-    button.addEventListener('click', () => {
-        calculator.appendParenthesis(button.innerText)
-        calculator.updateDisplay()
-    })
-})
-
-equalsButton.addEventListener('click', button => {
-    calculator.compute()
+    if (number !== undefined) {
+        calculator.appendNumber(text)
+    } else if (operation !== undefined) {
+        calculator.chooseOperation(text)
+    } else if (parenthesis !== undefined) {
+        calculator.appendParenthesis(text)
+    } else {
+        switch (btn.dataset.action) {
+            case 'equals':
+                calculator.compute()
+                break
+            case 'clear':
+                calculator.clear()
+                break
+            case 'delete':
+                calculator.delete()
+                break
+        }
+    }
+    
     calculator.updateDisplay()
 })
 
-clearButton.addEventListener('click', button => {
-    calculator.clear()
-    calculator.updateDisplay()
-})
-
-deleteButton.addEventListener('click', button => {
-    calculator.delete()
-    calculator.updateDisplay()
-})
