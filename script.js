@@ -81,27 +81,35 @@ class Calculator {
     }
 
     /**
-     * Append a parenthesis with smart spacing
+     * Append a parenthesis intelligently
      */
-    appendParenthesis(paren) {
+    appendParenthesis() {
         if (this.shouldResetScreen) {
             this.currentValue = ''
             this.shouldResetScreen = false
         }
 
-        if (this.currentValue === '0') {
-            this.currentValue = paren
+        if (this.currentValue === '0' || this.currentValue === '') {
+            this.currentValue = '('
             return
         }
 
-        const lastChar = this.currentValue.slice(-1)
-        const isOperatorOrParen = [...CONFIG.OPERATORS, '(', ' '].includes(lastChar)
-        
-        // Add space before opening parenthesis if it follows a number or %
-        if (paren === '(' && !isOperatorOrParen) {
-            this.currentValue += ' ' + paren
+        const openCount = (this.currentValue.match(/\(/g) || []).length
+        const closeCount = (this.currentValue.match(/\)/g) || []).length
+        const lastChar = this.currentValue.trim().slice(-1)
+        const isOperator = CONFIG.OPERATORS.includes(lastChar)
+
+        // If we have open parentheses and last char is not an operator or '('
+        if (openCount > closeCount && !isOperator && lastChar !== '(') {
+            this.currentValue += ')'
         } else {
-            this.currentValue += paren
+            // Add space before opening parenthesis if it follows a number or %
+            const needsSpace = !isOperator && lastChar !== '(' && lastChar !== ' '
+            if (needsSpace) {
+                this.currentValue += ' ('
+            } else {
+                this.currentValue += '('
+            }
         }
     }
 
@@ -291,7 +299,7 @@ keypad.addEventListener('click', (e) => {
     } else if (operation !== undefined) {
         calculator.chooseOperation(text)
     } else if (parenthesis !== undefined) {
-        calculator.appendParenthesis(text)
+        calculator.appendParenthesis()
     } else {
         switch (btn.dataset.action) {
             case 'equals':
