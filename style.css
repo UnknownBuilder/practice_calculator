@@ -124,11 +124,24 @@ body {
     justify-content: center;
     align-items: center;
     border-radius: 50%;
-    transition: background-color 0.2s;
+    transition: background-color 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease;
+    user-select: none;
+    outline: none;
 }
 
 .btn:hover {
     background-color: #f0f0f0;
+}
+
+.btn:focus-visible {
+    outline: 2px solid var(--text-purple-accent);
+    outline-offset: 2px;
+}
+
+.btn:active,
+.btn.pressed {
+    transform: scale(0.92);
+    background-color: #e2e2e2;
 }
 
 /* Specific Button Styles */
@@ -138,10 +151,28 @@ body {
     font-size: 1.2rem;
 }
 
+.btn-top:hover {
+    background-color: #fce8fa;
+}
+
+.btn-top:active,
+.btn-top.pressed {
+    background-color: #f6cdfb;
+}
+
 .btn-operator {
     color: var(--text-purple-accent);
     font-size: 1.8rem;
     font-weight: 400;
+}
+
+.btn-operator:hover {
+    background-color: #fce8fa;
+}
+
+.btn-operator:active,
+.btn-operator.pressed {
+    background-color: #f6cdfb;
 }
 
 /* The Equals Button */
@@ -151,10 +182,18 @@ body {
     font-size: 1.8rem;
     border-radius: 25px; /* Softer corners than a circle */
     aspect-ratio: auto; /* override default aspect ratio */
+    transition: background-color 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease;
 }
 
 .btn-equals:hover {
     background-color: #5e0070;
+    box-shadow: 0 4px 12px rgba(122, 0, 143, 0.3);
+}
+
+.btn-equals:active,
+.btn-equals.pressed {
+    transform: scale(0.96);
+    background-color: #4a0058;
 }
 
 /* Utility class for spanning columns */

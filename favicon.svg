@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <style>
+    .body-outline { stroke: #1a1a1a; fill: none; stroke-width: 28; stroke-linejoin: round; }
+    .display-box { fill: #1a1a1a; opacity: 0.15; }
+    .btn { fill: #1a1a1a; }
+    .accent { fill: #7a008f; }
+    
+    @media (prefers-color-scheme: dark) {
+      .body-outline { stroke: #ffffff; }
+      .display-box { fill: #ffffff; opacity: 0.25; }
+      .btn { fill: #ffffff; }
+      .accent { fill: #f8b9f3; }
+    }
+  </style>
+  <!-- Calculator Frame -->
+  <rect class="body-outline" x="76" y="56" width="360" height="400" rx="48"/>
+  <!-- Display Screen -->
+  <rect class="display-box" x="116" y="96" width="280" height="90" rx="20"/>
+  <rect class="btn" x="296" y="136" width="70" height="16" rx="8"/>
+  <!-- Keypad Grid -->
+  <circle class="btn" cx="156" cy="246" r="24"/>
+  <circle class="btn" cx="256" cy="246" r="24"/>
+  <circle class="btn" cx="356" cy="246" r="24"/>
+  <circle class="btn" cx="156" cy="326" r="24"/>
+  <circle class="btn" cx="256" cy="326" r="24"/>
+  <circle class="btn" cx="356" cy="326" r="24"/>
+  <!-- Equals Button -->
+  <rect class="accent" x="132" y="386" width="248" height="40" rx="20"/>
+</svg>

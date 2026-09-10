@@ -29,7 +29,7 @@ class Calculator {
         this.previousExpression = ''
         this.shouldResetScreen = false
         this._lastMeasuredText = null
-        
+
         if (this.currentOperandElement) {
             this.currentOperandElement.style.fontSize = `${CONFIG.DISPLAY.DEFAULT_FONT_SIZE_PX}px`
             this.currentOperandElement.style.whiteSpace = 'nowrap'
@@ -45,7 +45,7 @@ class Calculator {
             return
         }
         if (this.currentValue === '0') return
-        
+
         this.currentValue = String(this.currentValue).slice(0, -1)
         if (!this.currentValue.trim()) {
             this.currentValue = '0'
@@ -60,13 +60,13 @@ class Calculator {
             this.currentValue = ''
             this.shouldResetScreen = false
         }
-        
+
         if (number === '.') {
             const parts = this.currentValue.split(/[\s×÷+-]/)
             const lastPart = parts[parts.length - 1]
             if (lastPart.includes('.')) return
         }
-        
+
         if (number === '%') {
             if (this.currentValue === '0' || this.currentValue.endsWith('%')) return
             this.currentValue += '%'
@@ -118,7 +118,7 @@ class Calculator {
      */
     chooseOperation(operation) {
         if (this.shouldResetScreen) this.shouldResetScreen = false
-        
+
         const trimmed = this.currentValue.trim()
         const lastChar = trimmed.slice(-1)
 
@@ -154,7 +154,7 @@ class Calculator {
                 // Limit precision and convert back to string
                 this.currentValue = String(Number(result.toFixed(CONFIG.DISPLAY.RESULT_PRECISION)))
             }
-            
+
             this.previousExpression = expression
             this.shouldResetScreen = true
         } catch (e) {
@@ -183,7 +183,7 @@ class Calculator {
     static balance(value) {
         const openCount = (value.match(/\(/g) || []).length
         const closeCount = (value.match(/\)/g) || []).length
-        
+
         if (openCount <= closeCount) {
             // If it starts with an unmatched open, and has no closes, just strip it
             if (value.trim().startsWith('(') && closeCount === 0) {
@@ -191,7 +191,7 @@ class Calculator {
             }
             return value
         }
-        
+
         return value + ')'.repeat(openCount - closeCount)
     }
 
@@ -200,21 +200,21 @@ class Calculator {
      */
     getFormattedValue(value) {
         if (value === 'Error') return 'Error'
-        
+
         const parts = value.split(/([\s×÷+\-()])/g)
         return parts.map(part => {
             if (/[\s×÷+\-()]/.test(part) || part === '') return part
-            
+
             const isPercent = part.endsWith('%')
             const numberStr = isPercent ? part.slice(0, -1) : part
             const [integer, decimal] = numberStr.split('.')
-            
+
             if (isNaN(parseFloat(integer))) return part
-            
-            const formattedInt = parseFloat(integer).toLocaleString('en-US', { 
-                maximumFractionDigits: 0 
+
+            const formattedInt = parseFloat(integer).toLocaleString('en-US', {
+                maximumFractionDigits: 0
             })
-            
+
             const result = decimal !== undefined ? `${formattedInt}.${decimal}` : formattedInt
             return isPercent ? result + '%' : result
         }).join('')
@@ -256,14 +256,14 @@ class Calculator {
 
         const availableWidth = el.clientWidth - CONFIG.DISPLAY.PADDING_BUFFER_PX
         const contentWidth = this.ghostElement.scrollWidth
-        
+
         let fontSize = CONFIG.DISPLAY.DEFAULT_FONT_SIZE_PX
         let isWrapping = false
 
         if (contentWidth > availableWidth) {
             const ratio = availableWidth / contentWidth
             fontSize = Math.floor(CONFIG.DISPLAY.DEFAULT_FONT_SIZE_PX * ratio)
-            
+
             if (fontSize < CONFIG.DISPLAY.MIN_FONT_SIZE_PX) {
                 fontSize = CONFIG.DISPLAY.MIN_FONT_SIZE_PX
                 isWrapping = true
@@ -313,7 +313,91 @@ keypad.addEventListener('click', (e) => {
                 break
         }
     }
-    
+
     calculator.updateDisplay()
 })
 
+/**
+ * Keyboard & Numpad / Ten-Key Input Listener
+ */
+document.addEventListener('keydown', (e) => {
+    // Ignore keyboard shortcuts with modifier keys (e.g. Ctrl+C, Cmd+R)
+    if (e.ctrlKey || e.metaKey || e.altKey) return
+
+    // Ignore if user is typing into an input/textarea element
+    if (['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName) || document.activeElement?.isContentEditable) {
+        return
+    }
+
+    const key = e.key
+    let targetBtn = null
+
+    if (key >= '0' && key <= '9') {
+        calculator.appendNumber(key)
+        targetBtn = findButtonByText(key, '[data-number]')
+    } else if (key === '.' || key === ',') {
+        calculator.appendNumber('.')
+        targetBtn = findButtonByText('.', '[data-number]')
+    } else if (key === '%') {
+        calculator.appendNumber('%')
+        targetBtn = findButtonByText('%', '[data-number]')
+    } else if (key === '+' || key === '-') {
+        e.preventDefault()
+        calculator.chooseOperation(key)
+        targetBtn = findButtonByText(key, '[data-operation]')
+    } else if (key === '*' || key === 'x' || key === 'X') {
+        e.preventDefault()
+        calculator.chooseOperation('×')
+        targetBtn = findButtonByText('×', '[data-operation]')
+    } else if (key === '/') {
+        e.preventDefault()
+        calculator.chooseOperation('÷')
+        targetBtn = findButtonByText('÷', '[data-operation]')
+    } else if (key === '(' || key === ')') {
+        calculator.appendParenthesis()
+        targetBtn = document.querySelector('[data-parenthesis]')
+    } else if (key === 'Enter' || key === '=') {
+        e.preventDefault()
+        calculator.compute()
+        targetBtn = document.querySelector('[data-action="equals"]')
+    } else if (key === 'Backspace'|| key === 'Delete') {
+        e.preventDefault()
+        calculator.delete()
+        targetBtn = document.querySelector('[data-action="delete"]')
+    } else if (key === 'Escape'  || key.toLowerCase() === 'c') {
+        e.preventDefault()
+        calculator.clear()
+        targetBtn = document.querySelector('[data-action="clear"]')
+    } else {
+        return
+    }
+
+    calculator.updateDisplay()
+
+    if (targetBtn) {
+        triggerButtonAnimation(targetBtn)
+    }
+})
+
+/**
+ * Helper to find a button by its displayed text
+ */
+function findButtonByText(text, selector) {
+    const buttons = document.querySelectorAll(selector)
+    return Array.from(buttons).find(btn => btn.innerText.trim() === text)
+}
+
+/**
+ * Trigger visual button press feedback
+ */
+function triggerButtonAnimation(button) {
+    button.classList.remove('pressed')
+    // Trigger reflow to restart transition on rapid key presses
+    void button.offsetWidth
+    button.classList.add('pressed')
+
+    clearTimeout(button._pressTimer)
+    button._pressTimer = setTimeout(() => {
+        button.classList.remove('pressed')
+    }, 150)
+}
