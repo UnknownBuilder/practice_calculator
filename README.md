@@ -8,7 +8,7 @@ Users should be able to:
 
 ### Screenshot
 
-![](./image/screenshot.png)
+![](image/screenshot.png)
 
 ## My process
 
